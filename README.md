@@ -230,7 +230,7 @@ node --check server/index.js
 
 - This is a local MVP, not a Chrome Web Store package.
 - Classifier thresholds are conservative defaults, not calibrated release thresholds.
-- ToS;DR matching, PDFs, authenticated/script-only documents, OCR, and cross-origin frames are not implemented.
+- PDFs, authenticated or script-only documents, OCR, and cross-origin frames are not implemented.
 - Language quality depends on the configured model and must be measured on representative sites.
 - In-page UI patterns remain adversarial and can change without notice.
 
