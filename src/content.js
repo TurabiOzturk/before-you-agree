@@ -6,6 +6,8 @@
   let dismissed = false;
   let currentCandidate;
   let lastOpenedTitle = "";
+  let classificationPending = false;
+  const classifiedCandidates = new WeakMap();
   let card;
 
   function isVisible(element) {
@@ -25,9 +27,20 @@
     return [...labels, ...labelledBy, textOf(control.closest("label"))].join(" ").replace(/\s+/g, " ").trim();
   }
 
+  function groupFor(control) {
+    const semantic = control.closest('.agreement-item,.agreements,.aggrements,fieldset,[role=group],[role=radiogroup]');
+    if (semantic) return semantic;
+    let group = control.closest("label") || control.parentElement;
+    for (let depth = 0; group && depth < 4; depth += 1, group = group.parentElement) {
+      const length = textOf(group).length;
+      if (length >= 10 && length <= 2_000) return group;
+    }
+    return control.closest("form") || control.parentElement;
+  }
+
   function candidateFor(control) {
     if (!isVisible(control) || control.closest('footer,[role="contentinfo"],nav,[role="navigation"]')) return null;
-    const group = control.closest('.agreement-item,.agreements,.aggrements,fieldset,form,[role=group],[role=radiogroup]') || control.closest("label") || control.parentElement;
+    const group = groupFor(control);
     if (!group || group.closest('footer,[role="contentinfo"],nav,[role="navigation"]')) return null;
     const associatedLabel = labelFor(control);
     const groupText = textOf(group);
@@ -45,6 +58,35 @@
 
   function findConsentCandidates(root = document) {
     return [...root.querySelectorAll(controlSelector)].map(candidateFor).filter(Boolean);
+  }
+
+  function ambiguousCandidateFor(control) {
+    if (!isVisible(control) || control.closest('footer,[role="contentinfo"],nav,[role="navigation"]')) return null;
+    const group = groupFor(control);
+    if (!group) return null;
+    const label = labelFor(control);
+    const nearbyText = textOf(group).slice(0, 2_000);
+    const interactive = [...group.querySelectorAll('a[href],button,[role="button"]')]
+      .filter(isVisible).slice(0, 8);
+    const actionTexts = [...(control.form?.querySelectorAll('button,[type="submit"]') || [])]
+      .filter(isVisible).map(textOf).filter(Boolean).slice(0, 4);
+    if ((label || nearbyText).length < 10 || (!interactive.length && !actionTexts.length)) return null;
+    const summary = {
+      controlType: control.getAttribute("role") || control.type || control.tagName?.toLowerCase() || "checkable",
+      labelText: label.slice(0, 500), nearbyText,
+      interactiveTexts: interactive.map(textOf).filter(Boolean), actionTexts,
+    };
+    const signature = JSON.stringify(summary);
+    if (classifiedCandidates.get(control) === signature) return null;
+    return {
+      control, group, label: label || nearbyText,
+      documentControls: interactive.filter((item) => !actions.test(textOf(item))),
+      confidence: "classifier", summary, signature,
+    };
+  }
+
+  function findAmbiguousCandidates(root = document) {
+    return [...root.querySelectorAll(controlSelector)].map(ambiguousCandidateFor).filter(Boolean);
   }
 
   function safeHttpUrl(value) {
@@ -171,9 +213,24 @@
     card = { host, status, results };
   }
 
-  function scan() {
+  async function scan() {
     const candidate = findConsentCandidates()[0];
-    if (candidate) showCard(candidate);
+    if (candidate) return showCard(candidate);
+    if (classificationPending) return;
+    const ambiguous = findAmbiguousCandidates()[0];
+    if (!ambiguous) return;
+    const settings = await chrome.storage.local.get({ remoteAnalysis: false });
+    if (!settings.remoteAnalysis) return;
+    classificationPending = true;
+    classifiedCandidates.set(ambiguous.control, ambiguous.signature);
+    try {
+      const response = await chrome.runtime.sendMessage({ type: "classify-candidate", payload: ambiguous.summary });
+      if (response?.ok && response.result.decision === "yes" && response.result.confidence >= 0.9) showCard(ambiguous);
+    } catch {
+      // Ambiguous candidates fail quietly; deterministic detection remains available.
+    } finally {
+      classificationPending = false;
+    }
   }
 
   document.addEventListener("click", (event) => {
@@ -191,5 +248,5 @@
     setTimeout(() => { pending = false; scan(); }, 250);
   }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["role", "aria-checked", "href", "open"] });
 
-  globalThis.__consentIntelligence = { findConsentCandidates, safeHttpUrl, htmlToText };
+  globalThis.__consentIntelligence = { findConsentCandidates, findAmbiguousCandidates, safeHttpUrl, htmlToText };
 })();

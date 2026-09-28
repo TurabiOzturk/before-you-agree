@@ -21,12 +21,12 @@ async function fetchDocument(url) {
   return { raw, contentType: type, url: response.url };
 }
 
-async function analyze(payload) {
+async function systemOne(path, payload) {
   const settings = await chrome.storage.local.get({ remoteAnalysis: false, serverUrl: DEFAULT_SERVER });
   if (!settings.remoteAnalysis) throw new Error("Enable private analysis in the extension settings first.");
   const server = new URL(settings.serverUrl);
   if (!['http:', 'https:'].includes(server.protocol)) throw new Error("The analysis server URL is invalid.");
-  const response = await fetch(new URL("/analyze", server), {
+  const response = await fetch(new URL(path, server), {
     method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify(payload), signal: AbortSignal.timeout(90_000),
   });
@@ -37,8 +37,9 @@ async function analyze(payload) {
 
 chrome.runtime.onMessage.addListener((message, _sender, reply) => {
   const task = message?.type === "fetch-document" ? fetchDocument(message.url)
-    : message?.type === "analyze-agreement" ? analyze(message.payload)
-      : null;
+    : message?.type === "analyze-agreement" ? systemOne("/analyze", message.payload)
+      : message?.type === "classify-candidate" ? systemOne("/classify-candidate", message.payload)
+        : null;
   if (!task) return false;
   task.then((result) => reply({ ok: true, result }), (error) => reply({ ok: false, error: error.message || "Request failed." }));
   return true;

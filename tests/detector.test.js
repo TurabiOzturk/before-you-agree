@@ -13,7 +13,10 @@ async function loadDetector(elements = []) {
   };
   const context = {
     document,
-    chrome: { runtime: { onMessage: { addListener() {} } } },
+    chrome: {
+      runtime: { onMessage: { addListener() {} }, sendMessage: async () => ({ ok: false }) },
+      storage: { local: { get: async () => ({ remoteAnalysis: false }) } },
+    },
     MutationObserver: class { observe() {} },
     getComputedStyle: () => ({ display: "block", visibility: "visible" }),
     setTimeout, URL, globalThis: {},
@@ -73,6 +76,26 @@ test("recognizes the supplied Turkish click-controlled agreement", async () => {
   assert.ok(candidate);
   assert.match(candidate.label, /Mesafeli Satış Sözleşmesi/);
   assert.equal(candidate.documentControls[0], agreementButton);
+});
+
+test("discovers a bounded candidate without requiring a known language", async () => {
+  const agreementButton = {
+    innerText: "利用規約", getClientRects: () => [1],
+    matches: () => false, getAttribute: () => "button",
+  };
+  const group = {
+    innerText: "利用規約を読み、同意します。", parentElement: null,
+    closest: () => null, matches: () => false, querySelectorAll: () => [agreementButton],
+  };
+  const control = {
+    labels: [], form: null, parentElement: group, type: "checkbox", tagName: "INPUT",
+    closest: () => null, getAttribute: () => "", getClientRects: () => [1],
+  };
+  const detector = await loadDetector([control]);
+  assert.equal(detector.findConsentCandidates().length, 0);
+  const [candidate] = detector.findAmbiguousCandidates();
+  assert.ok(candidate);
+  assert.match(candidate.summary.nearbyText, /利用規約/);
 });
 
 test("agreement links are restricted to HTTP and HTTPS", async () => {

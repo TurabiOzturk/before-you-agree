@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-export const ANALYZER_VERSION = "jev-evidence-v1";
+export const ANALYZER_VERSION = "system-one-evidence-v2";
 export const SCORE_VERSION = "risk-weights-v1";
 
 const TOPICS = {
@@ -165,11 +165,11 @@ export function normalizeDocument(input) {
 }
 
 function evidenceCandidates(paragraphs, topic) {
-  return Object.entries(paragraphs)
-    .map(([id, text]) => ({ id, text, score: (text.match(new RegExp(topic.terms.source, topic.terms.flags + "g")) || []).length }))
-    .filter(({ score }) => score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 6);
+  const all = Object.entries(paragraphs)
+    .map(([id, text]) => ({ id, text, score: (text.match(new RegExp(topic.terms.source, topic.terms.flags + "g")) || []).length }));
+  const lexical = all.filter(({ score }) => score > 0).sort((a, b) => b.score - a.score).slice(0, 6);
+  // ponytail: unknown-language fallback fans out across bounded paragraphs; add semantic retrieval if token cost becomes material.
+  return lexical.length ? lexical : all;
 }
 
 export function scoreFindings(findings, coverage) {
@@ -201,7 +201,7 @@ export function buildAnalysisRequest(paragraphs) {
       };
     }
   }
-  return { state: { paragraphs }, model: "jev-latest", questions };
+  return { state: { paragraphs }, model: process.env.SYSTEM_ONE_MODEL || "jev-latest", questions };
 }
 
 function parseChoice(answer, allowed) {
@@ -244,7 +244,7 @@ export async function analyzeAgreement({ text, url = "", title = "Agreement" }, 
         says_nothing: "The excerpt does not establish the claim.",
       },
     }]));
-    const check = await ask({ state: { items }, model: "jev-latest", questions });
+    const check = await ask({ state: { items }, model: process.env.SYSTEM_ONE_MODEL || "jev-latest", questions });
     for (const finding of proposed) {
       const answer = parseChoice(check.answers?.[finding.topic], ["supports", "contradicts", "says_nothing"]);
       if (answer?.choice === "supports" && answer.confidence >= 0.75) {
@@ -269,21 +269,48 @@ export async function analyzeAgreement({ text, url = "", title = "Agreement" }, 
   };
 }
 
-export async function callJev(payload, apiKey = process.env.JEV_API_KEY) {
-  if (!apiKey) throw new Error("JEV_API_KEY is not configured on the analysis server.");
+export async function classifyConsentCandidate(summary, ask) {
+  const result = await ask({
+    state: { candidate: summary },
+    model: process.env.SYSTEM_ONE_MODEL || "jev-latest",
+    questions: {
+      consent_event: {
+        type: "choice",
+        instructions: {
+          question: "Does `candidate` show a user being asked to accept or acknowledge a legal or commercial agreement as part of a nearby consequential action?",
+          language_rule: "Interpret the candidate in its own language. Do not require English wording.",
+        },
+        criteria: {
+          yes: "A control or acceptance statement is tied to terms, a contract, a policy, or another legal/commercial agreement.",
+          no: "This is navigation, remember-me, newsletter, marketing preference, or another control unrelated to accepting an agreement.",
+          unsure: "The bounded candidate does not contain enough relationship evidence.",
+        },
+      },
+    },
+  });
+  const answer = parseChoice(result.answers?.consent_event, ["yes", "no", "unsure"]);
+  if (!answer) throw new Error("The classifier returned an invalid consent decision.");
+  return { decision: answer.choice, confidence: answer.confidence, probabilities: answer.probabilities || {} };
+}
+
+export async function callSystemOne(payload) {
+  const apiKey = process.env.SYSTEM_ONE_API_KEY || process.env.JEV_API_KEY;
+  const endpoint = process.env.SYSTEM_ONE_ENDPOINT || "https://api.typesafe.ai/v1/systemone";
+  const model = process.env.SYSTEM_ONE_MODEL || "jev-latest";
+  if (!apiKey) throw new Error("Set JEV_API_KEY or SYSTEM_ONE_API_KEY on the analysis server.");
   let response;
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    response = await fetch("https://api.typesafe.ai/v1/systemone", {
+    response = await fetch(endpoint, {
       method: "POST",
       headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, model }),
       signal: AbortSignal.timeout(60_000),
     });
     if (![429, 529].includes(response.status)) break;
     await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt));
   }
-  if (!response?.ok) throw new Error(`JEV request failed (${response?.status || "network"}).`);
+  if (!response?.ok) throw new Error(`System One request failed (${response?.status || "network"}).`);
   const result = await response.json();
-  if (!result?.answers || typeof result.answers !== "object") throw new Error("JEV returned an invalid response.");
+  if (!result?.answers || typeof result.answers !== "object") throw new Error("The System One endpoint returned an invalid response.");
   return result;
 }

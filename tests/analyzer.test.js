@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { analyzeAgreement, buildAnalysisRequest, normalizeDocument, scoreFindings } from "../server/analyzer.js";
+import { analyzeAgreement, buildAnalysisRequest, classifyConsentCandidate, normalizeDocument, scoreFindings } from "../server/analyzer.js";
 
 const document = `Privacy Terms
 
@@ -43,6 +43,21 @@ test("analysis only displays a claim after evidence verification", async () => {
   assert.equal(assessment.confidence, 0.91);
   assert.equal(assessment.findings[0].topic, "data_sale");
   assert.match(assessment.findings[0].evidence[0].exactQuote, /valuable consideration/);
+});
+
+test("unknown-language documents still receive evidence-selection questions", () => {
+  const paragraphs = normalizeDocument("利用規約。個人情報を第三者に販売する場合があります。アカウントは設定画面から削除できます。".repeat(8));
+  const request = buildAnalysisRequest(paragraphs);
+  assert.ok(request.questions.data_sale_evidence);
+  assert.ok(Object.keys(request.questions.data_sale_evidence.criteria).some((choice) => choice.startsWith("p")));
+});
+
+test("classifier fallback interprets a bounded candidate in its own language", async () => {
+  const result = await classifyConsentCandidate({ nearbyText: "利用規約を読み、同意します。", interactiveTexts: ["利用規約"] }, async (request) => {
+    assert.match(request.questions.consent_event.instructions.language_rule, /own language/);
+    return { answers: { consent_event: { type: "choice", choice: "yes", confidence: 0.97, probabilities: { yes: 0.98, no: 0.01, unsure: 0.01 } } } };
+  });
+  assert.deepEqual(result, { decision: "yes", confidence: 0.97, probabilities: { yes: 0.98, no: 0.01, unsure: 0.01 } });
 });
 
 test("deterministic score is withheld for partial coverage and clamps complete scores", () => {

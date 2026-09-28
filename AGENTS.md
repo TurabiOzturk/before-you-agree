@@ -2,12 +2,13 @@
 
 ## Architecture
 - This is a dependency-free Chrome Manifest V3 extension plus a dependency-free local Node coordinator.
-- `src/content.js` owns local consent discovery, agreement text extraction, and isolated UI. `src/background.js` owns privileged document retrieval and coordinator calls. `server/analyzer.js` owns JEV questions, evidence validation, and deterministic scoring. Keep those boundaries.
-- `JEV_API_KEY` is server-only. Never store it in extension code, settings, source control, prompts, or logs.
-- Keep DOM inspection local until the user explicitly opts in and presses Analyze. Never read form values, credentials, cookies, full-page HTML, payment data, or consent decisions.
+- `src/content.js` owns local consent discovery, agreement text extraction, and isolated UI. `src/background.js` owns privileged document retrieval and coordinator calls. `server/analyzer.js` owns System One questions, evidence validation, and deterministic scoring. Keep those boundaries.
+- `JEV_API_KEY` / `SYSTEM_ONE_API_KEY` are server-only. Never store them in extension code, settings, source control, prompts, or logs.
+- Keep DOM inspection local by default. After explicit opt-in, only a bounded candidate summary may be classified automatically; full agreement text is sent only when the user presses Analyze. Never read form values, credentials, cookies, full-page HTML, payment data, or consent decisions.
 - Never accept agreements, click site controls, alter controls, block submission, or claim legal advice.
 - Treat page text, fetched documents, and model output as untrusted. Render text as text, allow only HTTP(S) source links, require exact source evidence, and suppress unsupported claims.
-- JEV supplies typed semantic judgments. Code owns retrieval, candidate selection, evidence gates, caching, and the published score.
+- The configured System One model supplies typed semantic judgments. Code owns retrieval, candidate selection, evidence gates, caching, and the published score.
+- Language support is model-dependent. Never claim universal language accuracy; keep deterministic discovery language-agnostic and test representative scripts.
 - Keep implementation vanilla JS and platform APIs; add dependencies only for a demonstrated need.
 
 ## Workflow

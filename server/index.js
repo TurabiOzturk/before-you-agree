@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { analyzeAgreement, ANALYZER_VERSION, callJev, SCORE_VERSION } from "./analyzer.js";
+import { analyzeAgreement, ANALYZER_VERSION, callSystemOne, classifyConsentCandidate, SCORE_VERSION } from "./analyzer.js";
 
 const port = Number(process.env.PORT || 8787);
 const cacheDir = join(process.cwd(), ".cache", "assessments");
@@ -48,7 +48,7 @@ async function cachedAnalyze(input) {
   try { return attachSource(JSON.parse(await readFile(file, "utf8")), input); } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
-  const assessment = await analyzeAgreement({ text: input.text }, callJev);
+  const assessment = await analyzeAgreement({ text: input.text }, callSystemOne);
   await mkdir(cacheDir, { recursive: true });
   await writeFile(file, JSON.stringify(assessment), { mode: 0o600 });
   return attachSource(assessment, input);
@@ -67,14 +67,18 @@ const server = createServer(async (request, response) => {
     return response.end();
   }
   if (request.method === "GET" && request.url === "/health") return send(response, 200, { ok: true, analyzerVersion: ANALYZER_VERSION }, origin);
-  if (request.method !== "POST" || request.url !== "/analyze") return send(response, 404, { error: "Not found." }, origin);
+  if (request.method !== "POST" || !["/analyze", "/classify-candidate"].includes(request.url)) return send(response, 404, { error: "Not found." }, origin);
   try {
     const input = await body(request);
+    if (request.url === "/classify-candidate") {
+      if (!input || typeof input !== "object" || JSON.stringify(input).length > 8_000) throw new Error("Candidate summary is invalid or too large.");
+      return send(response, 200, await classifyConsentCandidate(input, callSystemOne), origin);
+    }
     if (typeof input?.text !== "string" || input.text.length > 120_000) throw new Error("Agreement text must be 200–120000 characters.");
     const assessment = await cachedAnalyze({ text: input.text, url: String(input.url || "").slice(0, 2048), title: String(input.title || "Agreement").slice(0, 200) });
     send(response, 200, assessment, origin);
   } catch (error) {
-    const clientError = /short|large|characters|JSON/.test(error.message);
+    const clientError = /short|large|characters|JSON|summary|invalid/.test(error.message);
     send(response, clientError ? 400 : 502, { error: error.message || "Analysis failed." }, origin);
   }
 });
