@@ -27,7 +27,7 @@
 
   function candidateFor(control) {
     if (!isVisible(control) || control.closest('footer,[role="contentinfo"],nav,[role="navigation"]')) return null;
-    const group = control.closest('.agreement-item,.agreements,.aggrements,[data-testid*="agreement"],fieldset,form,[role=group],[role=radiogroup]') || control.closest("label") || control.parentElement;
+    const group = control.closest('.agreement-item,.agreements,.aggrements,fieldset,form,[role=group],[role=radiogroup]') || control.closest("label") || control.parentElement;
     if (!group || group.closest('footer,[role="contentinfo"],nav,[role="navigation"]')) return null;
     const associatedLabel = labelFor(control);
     const groupText = textOf(group);
@@ -37,7 +37,7 @@
       .filter((item) => legal.test(textOf(item)) || item.matches?.('[class*="contract-link"]'));
     const nearbyAction = [...(control.form?.querySelectorAll('button,[type="submit"]') || group.querySelectorAll('button,[type="submit"]'))]
       .some((button) => isVisible(button) && actions.test(textOf(button) || button.value || ""));
-    const structured = group.matches?.('.agreement-item,.agreements,.aggrements,[data-testid*="agreement"]');
+    const structured = group.matches?.('.agreement-item,.agreements,.aggrements');
     const agreement = legal.test(label) && (consentText.test(groupText) || nearbyAction || documentControls.length || structured);
     if (!agreement) return null;
     return { control, group, label: label || groupText, documentControls, confidence: structured || consentText.test(groupText) ? "high" : "medium" };

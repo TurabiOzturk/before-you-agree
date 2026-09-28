@@ -61,7 +61,11 @@ test("recognizes the supplied Turkish click-controlled agreement", async () => {
   };
   const control = {
     labels: [{ textContent: "checkbox label" }], form: null,
-    closest: (selector) => selector.includes("footer") ? null : selector.includes(".agreement-item") ? group : null,
+    closest: (selector) => {
+      if (selector.includes("footer")) return null;
+      if (selector.includes('[data-testid*="agreement"]')) return control;
+      return selector.includes(".agreement-item") ? group : null;
+    },
     getAttribute: () => "", getClientRects: () => [1],
   };
   const detector = await loadDetector([control]);
