@@ -1,0 +1,17 @@
+# Consent Intelligence — Agent Guide
+
+## Architecture
+- This is a dependency-free Chrome Manifest V3 extension plus a dependency-free local Node coordinator.
+- `src/content.js` owns local consent discovery, agreement text extraction, and isolated UI. `src/background.js` owns privileged document retrieval and coordinator calls. `server/analyzer.js` owns JEV questions, evidence validation, and deterministic scoring. Keep those boundaries.
+- `JEV_API_KEY` is server-only. Never store it in extension code, settings, source control, prompts, or logs.
+- Keep DOM inspection local until the user explicitly opts in and presses Analyze. Never read form values, credentials, cookies, full-page HTML, payment data, or consent decisions.
+- Never accept agreements, click site controls, alter controls, block submission, or claim legal advice.
+- Treat page text, fetched documents, and model output as untrusted. Render text as text, allow only HTTP(S) source links, require exact source evidence, and suppress unsupported claims.
+- JEV supplies typed semantic judgments. Code owns retrieval, candidate selection, evidence gates, caching, and the published score.
+- Keep implementation vanilla JS and platform APIs; add dependencies only for a demonstrated need.
+
+## Workflow
+- `npm test` runs the Node built-in test runner.
+- `npm run server` loads the machine-local `/Users/localroot/.jev.env` when available and binds to `127.0.0.1:8787`.
+- Load this directory through `chrome://extensions` → Developer mode → Load unpacked.
+- Update README when permissions, data flow, setup, or supported document types change.

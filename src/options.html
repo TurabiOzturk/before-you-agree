@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Privacy &amp; settings — Consent Intelligence</title><link rel="stylesheet" href="ui.css"></head>
+<body>
+  <main class="settings">
+    <p class="eyebrow">PRIVACY BY DEFAULT</p>
+    <h1>Consent Intelligence</h1>
+    <p>Consent detection stays in your browser. Agreement analysis is optional and sends only the agreement text—not page HTML, form values, browsing history, or your consent decision—to the analysis server you configure.</p>
+    <form id="settings">
+      <section>
+        <h2>JEV analysis</h2>
+        <label class="toggle"><input id="remoteAnalysis" type="checkbox"> Enable agreement analysis</label>
+        <label for="serverUrl">Analysis server</label>
+        <input id="serverUrl" type="url" required value="http://127.0.0.1:8787" spellcheck="false">
+        <p class="fine">The API key remains on this server and is never stored in the extension.</p>
+      </section>
+      <button type="submit">Save settings</button> <span id="saved" role="status"></span>
+    </form>
+    <section><h2>What the extension does</h2><p>It detects likely agreement controls, retrieves a public linked document or reads an agreement you opened on the page, asks JEV narrow clause questions, verifies evidence, and computes any score from fixed weights.</p></section>
+    <section><h2>Limits</h2><p>Results can be incomplete or wrong and are not legal advice. Partial reviews receive no score. The extension never checks a box, opens an agreement for you, or submits a form.</p></section>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>

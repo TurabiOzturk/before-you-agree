@@ -1,0 +1,10 @@
+{
+  "name": "consent-intelligence",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "server": "node --env-file-if-exists=/Users/localroot/.jev.env server/index.js",
+    "test": "node --test"
+  }
+}
