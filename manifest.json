@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Consent Intelligence",
-  "version": "0.4.0",
+  "name": "Before You Agree",
+  "version": "0.5.0",
   "description": "Detect agreement moments and show evidence-backed assessments before you consent.",
   "permissions": ["storage"],
   "host_permissions": ["http://*/*", "https://*/*"],
@@ -15,5 +15,5 @@
     }
   ],
   "options_page": "src/options.html",
-  "action": { "default_title": "Consent Intelligence", "default_popup": "src/popup.html" }
+  "action": { "default_title": "Before You Agree", "default_popup": "src/popup.html" }
 }

@@ -186,14 +186,14 @@
 
   function showCard(candidate) {
     currentCandidate = candidate;
-    if (dismissed || card || document.getElementById("consent-intelligence-host")) return;
+    if (dismissed || card || document.getElementById("before-you-agree-host")) return;
     const host = document.createElement("div");
-    host.id = "consent-intelligence-host";
+    host.id = "before-you-agree-host";
     host.style.cssText = "all:initial;position:fixed;z-index:2147483647;right:16px;bottom:16px";
     const shadow = host.attachShadow({ mode: "closed" });
     const style = document.createElement("style");
     style.textContent = `:host{all:initial}*{box-sizing:border-box}section{font:14px/1.45 system-ui,sans-serif;width:min(390px,calc(100vw - 32px));padding:16px;background:#101b22;color:#f4f7f5;border:1px solid #416058;border-radius:16px;box-shadow:0 14px 48px #0006}header{display:flex;justify-content:space-between;gap:12px;align-items:center}strong{font-size:15px}p{color:#c5d0cc;margin:10px 0}button{font:inherit;color:inherit;background:#285c49;border:1px solid #5d8d79;border-radius:8px;padding:8px 11px;cursor:pointer}header button{background:transparent;border-color:#49685c}button:focus-visible,a:focus-visible{outline:3px solid #83e0bd;outline-offset:2px}.hint,.meta{font-size:12px;color:#aabbb4}.status[data-state=working]{color:#83e0bd}.status[data-state=error]{color:#ffb7a8}.results{max-height:280px;overflow:auto}.results ul{margin:10px 0;padding-left:20px}.results li{margin:7px 0}.confidence{font-weight:700;color:#f4f7f5}a{color:#83e0bd}`;
-    const section = document.createElement("section"); section.setAttribute("role", "region"); section.setAttribute("aria-label", "Consent Intelligence agreement check");
+    const section = document.createElement("section"); section.setAttribute("role", "region"); section.setAttribute("aria-label", "Before You Agree agreement check");
     const header = document.createElement("header");
     const title = element("strong", "Agreement detected");
     const close = element("button", "Dismiss"); close.type = "button"; close.setAttribute("aria-label", "Dismiss agreement check");
@@ -248,5 +248,5 @@
     setTimeout(() => { pending = false; scan(); }, 250);
   }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["role", "aria-checked", "href", "open"] });
 
-  globalThis.__consentIntelligence = { findConsentCandidates, findAmbiguousCandidates, safeHttpUrl, htmlToText };
+  globalThis.__beforeYouAgree = { findConsentCandidates, findAmbiguousCandidates, safeHttpUrl, htmlToText };
 })();

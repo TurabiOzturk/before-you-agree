@@ -1,4 +1,4 @@
-# Consent Intelligence — Agent Guide
+# Before You Agree — Agent Guide
 
 ## Architecture
 - This is a dependency-free Chrome Manifest V3 extension plus a dependency-free local Node coordinator.

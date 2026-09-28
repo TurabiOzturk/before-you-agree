@@ -1,6 +1,6 @@
 <div align="center">
 
-# Consent Intelligence
+# Before You Agree
 
 **Know when a page is asking for agreement—and inspect the risks before accepting.**
 
@@ -16,9 +16,9 @@
 
 ---
 
-## What is Consent Intelligence?
+## What is Before You Agree?
 
-Consent Intelligence is a Chrome extension that detects signup, checkout, subscription, and similar agreement moments. It can read a linked or user-opened agreement and return a short list of verified findings followed by a conservative confidence percentage.
+Before You Agree is a Chrome extension that detects signup, checkout, subscription, and similar agreement moments. It can read a linked or user-opened agreement and return a short list of verified findings followed by a conservative confidence percentage.
 
 > **This app is for people searching for:**
 >
@@ -45,7 +45,7 @@ The project is also a practical demonstration of **System One model design**:
 
 A generic page summarizer solves the wrong problem. A footer link to “Terms” is not a consent event; a checkbox connected to a contract and a consequential action may be.
 
-Consent Intelligence treats consent as a relationship between:
+Before You Agree treats consent as a relationship between:
 
 1. a checkable control or acceptance statement;
 2. nearby agreement text or document controls; and
@@ -80,8 +80,8 @@ The model is deliberately not the first step. The interesting engineering work i
 ### 1. Clone and verify
 
 ```bash
-git clone https://github.com/TurabiOzturk/consent-intelligence.git
-cd consent-intelligence
+git clone https://github.com/TurabiOzturk/before-you-agree.git
+cd before-you-agree
 npm test
 ```
 
@@ -169,7 +169,7 @@ A classifier with a different wire format needs only a translation at the coordi
 ## Language support
 
 > [!WARNING]
-> **Consent Intelligence is not guaranteed to be language-agnostic and does not claim universal language support.** Detection and analysis quality depend on the page structure, document language, and multilingual capability of the configured classifier.
+> **Before You Agree is not guaranteed to be language-agnostic and does not claim universal language support.** Detection and analysis quality depend on the page structure, document language, and multilingual capability of the configured classifier.
 
 The pipeline is designed to avoid rejecting an unfamiliar language too early:
 

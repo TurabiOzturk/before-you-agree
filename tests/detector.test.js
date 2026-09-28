@@ -22,7 +22,7 @@ async function loadDetector(elements = []) {
     setTimeout, URL, globalThis: {},
   };
   vm.runInNewContext(await readFile(new URL("../src/content.js", import.meta.url), "utf8"), context);
-  return context.globalThis.__consentIntelligence;
+  return context.globalThis.__beforeYouAgree;
 }
 
 test("identifies a linked agreement control", async () => {

@@ -83,4 +83,4 @@ const server = createServer(async (request, response) => {
   }
 });
 
-server.listen(port, "127.0.0.1", () => console.log(`Consent Intelligence analysis server listening on http://127.0.0.1:${port}`));
+server.listen(port, "127.0.0.1", () => console.log(`Before You Agree analysis server listening on http://127.0.0.1:${port}`));

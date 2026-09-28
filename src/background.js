@@ -26,10 +26,15 @@ async function systemOne(path, payload) {
   if (!settings.remoteAnalysis) throw new Error("Enable private analysis in the extension settings first.");
   const server = new URL(settings.serverUrl);
   if (!['http:', 'https:'].includes(server.protocol)) throw new Error("The analysis server URL is invalid.");
-  const response = await fetch(new URL(path, server), {
-    method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify(payload), signal: AbortSignal.timeout(90_000),
-  });
+  let response;
+  try {
+    response = await fetch(new URL(path, server), {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload), signal: AbortSignal.timeout(90_000),
+    });
+  } catch {
+    throw new Error(`Cannot reach the analysis server at ${server.origin}. Start it with npm run server.`);
+  }
   const result = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(result.error || `Analysis failed (${response.status}).`);
   return result;
