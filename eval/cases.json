@@ -1,0 +1,17 @@
+[
+  {
+    "id": "tr-statutory-consumer-forum",
+    "text": "Uyuşmazlıklarda Tüketici Hakem Heyetleri ile Tüketici Mahkemeleri yetkilidir. Tüketici Mahkemesinde dava açılmadan önce arabulucuya başvurulması gerekir. Bu yol, tüketicinin kanuni başvuru haklarını düzenler ve özel tahkim şartı içermez. Uyuşmazlıklar için yetkili tüketici mercileri ve mahkemeler kullanılabilir.",
+    "expected": { "arbitration": "no" }
+  },
+  {
+    "id": "en-private-binding-arbitration",
+    "text": "Every dispute arising from this agreement must be resolved exclusively through final and binding private arbitration. The parties waive the right to have the dispute decided by a court or jury. The arbitrator alone will decide all claims, and judgment on the award may be entered in a court with jurisdiction.",
+    "expected": { "arbitration": "yes" }
+  },
+  {
+    "id": "tr-mediation-before-court",
+    "text": "Taraflar uyuşmazlık hakkında dava açmadan önce zorunlu arabuluculuk sürecine başvuracaktır. Arabuluculukta anlaşma sağlanamazsa tüketici, yetkili Tüketici Mahkemesinde dava açabilir. Bu hüküm özel tahkim veya bağlayıcı hakem şartı getirmez; mahkemeye erişim arabuluculuk sonrasında devam eder.",
+    "expected": { "arbitration": "no" }
+  }
+]

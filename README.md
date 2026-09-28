@@ -64,8 +64,9 @@ The model is deliberately not the first step. The interesting engineering work i
 | Linked HTML/plain-text agreement retrieval | ✅ | Public HTTP(S), no credentials, size limited |
 | User-opened dialog/drawer/modal agreements | ✅ | Observed only; never synthetic-clicked |
 | Typed clause classification | ✅ | JEV or a compatible System One endpoint |
+| Deterministic personal-data redaction | ✅ | Buyer/contact fields, emails, and phone numbers are removed before model calls |
 | Internal evidence selection and support check | ✅ | Unsupported claims are suppressed |
-| Finding bullets and confidence percentage | ✅ | Evidence text is not shown |
+| Finding bullets and confidence percentage | ✅ | Evidence text is not shown; reassuring findings require higher confidence |
 | Deterministic 0–10 risk score | ✅ Bounded | Withheld unless core coverage is complete |
 | PDFs, authenticated documents, and cross-origin frames | ❌ | Not implemented |
 
@@ -144,7 +145,8 @@ Before any semantic model evaluates an agreement, code performs the cheap and ex
 - rejects footer, navigation, remember-me, and common preference contexts;
 - bounds candidate summaries before classifier fallback;
 - validates public document schemes, redirects, MIME type, timeout, and size;
-- normalizes text and hashes the exact assessed document;
+- redacts personalized buyer/contact fields, emails, and phone numbers before any external model call;
+- normalizes text, removes exact duplicate paragraphs, and hashes the assessed redacted document;
 - uses topic keywords to shortlist evidence when possible, then falls back to bounded paragraph choices for unknown languages; and
 - caches assessments by document content and analyzer/scoring versions.
 
@@ -187,6 +189,7 @@ The test suite includes a Japanese-script candidate to ensure unknown languages 
 These numbers mean different things:
 
 - **Confidence** is the lowest confidence among the displayed, evidence-verified findings. Using the minimum keeps the card conservative.
+- **Display gates** suppress risk findings below 75%, neutral findings below 80%, and reassuring findings below 85%. These are conservative defaults to evaluate, not universal calibration claims.
 - **Risk score** is a deterministic 0–10 calculation from fixed topic weights. It appears only when every core topic has an explicit, sufficiently confident classification.
 - **Partial review** means no risk score. Missing language is never treated as safe.
 
@@ -198,7 +201,8 @@ Local by default:
 - no browsing history or routine telemetry is collected;
 - deterministic discovery remains on-device;
 - after opt-in, an ambiguous candidate may send only bounded label, nearby-text, interactive-text, and action-text fields;
-- full agreement text is sent only after the user presses **Analyze agreement**; and
+- agreement text is sent to the loopback coordinator only after the user presses **Analyze agreement**;
+- the coordinator removes recognized personal fields before calling the external model; and
 - model credentials stay in the loopback coordinator.
 
 The cache under `.cache/` contains assessments and internal agreement evidence. `.env` and `.cache/` are git-ignored.
@@ -212,6 +216,8 @@ src/background.js      Public document retrieval and coordinator transport
 src/options.*          Explicit opt-in and coordinator settings
 server/analyzer.js     System One questions, verification, confidence, and scoring
 server/index.js        Loopback HTTP boundary and hash/version cache
+eval/                  Synthetic, non-personal System One evaluation cases
+scripts/eval.js         Live classifier evaluation runner
 tests/                 Detector and analysis contract checks
 AGENTS.md              Engineering and privacy rules for coding agents
 ```
@@ -220,6 +226,7 @@ AGENTS.md              Engineering and privacy rules for coding agents
 
 ```bash
 npm test
+npm run eval             # optional live eval; uses the configured model and API quota
 node --check src/content.js
 node --check src/background.js
 node --check server/analyzer.js

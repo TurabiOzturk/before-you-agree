@@ -20,6 +20,11 @@
     return (element?.innerText || element?.textContent || "").replace(/\s+/g, " ").trim();
   }
 
+  function documentTextOf(element) {
+    return (element?.innerText || element?.textContent || "")
+      .replace(/\r/g, "\n").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  }
+
   function labelFor(control) {
     const labels = [...(control.labels || [])].map(textOf);
     const labelledBy = (control.getAttribute("aria-labelledby") || "").split(/\s+/).filter(Boolean)
@@ -103,7 +108,7 @@
   function openAgreementText() {
     const selectors = ['dialog[open]','[role="dialog"]','[aria-modal="true"]','[class*="modal"]','[class*="drawer"]','[class*="popup"]'];
     const explicit = [...document.querySelectorAll(selectors.join(","))]
-      .filter(isVisible).map((node) => textOf(node))
+      .filter(isVisible).map(documentTextOf)
       .filter((text) => text.length >= 200 && legal.test(text))
       .sort((a, b) => b.length - a.length)[0];
     if (explicit) return explicit;
@@ -112,7 +117,7 @@
       if (!isVisible(node) || !textOf(node).includes(lastOpenedTitle)) continue;
       for (let overlay = node; overlay && overlay !== document.body; overlay = overlay.parentElement) {
         const style = getComputedStyle(overlay);
-        const text = textOf(overlay);
+        const text = documentTextOf(overlay);
         if (style.position === "fixed" && text.length >= 200 && text.length <= 120_000) return text;
       }
     }
@@ -123,7 +128,7 @@
     if (/text\/plain/i.test(contentType)) return raw.replace(/\s+/g, " ").trim();
     const parsed = new DOMParser().parseFromString(raw, "text/html");
     parsed.querySelectorAll("script,style,noscript,svg,nav,footer,header").forEach((node) => node.remove());
-    return textOf(parsed.querySelector("article,main") || parsed.body);
+    return documentTextOf(parsed.querySelector("article,main") || parsed.body);
   }
 
   function element(tag, text, className = "") {

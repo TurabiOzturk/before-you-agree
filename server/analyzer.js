@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
 
-export const ANALYZER_VERSION = "system-one-evidence-v2";
+export const ANALYZER_VERSION = "system-one-evidence-v3";
 export const SCORE_VERSION = "risk-weights-v1";
+
+const DISPLAY_CONFIDENCE = { high_risk: 0.75, risk: 0.75, neutral: 0.8, benefit: 0.85 };
 
 const TOPICS = {
   data_sale: {
@@ -85,12 +87,19 @@ const TOPICS = {
     impact: "benefit", penalty: 0,
   },
   arbitration: {
-    question: "Does this agreement require disputes to be resolved through binding arbitration rather than ordinary court proceedings?",
-    terms: /arbitrat|dispute resolution|hakem|tahkim|uyuşmazlık/i,
+    question: "Does this agreement impose private binding arbitration that replaces or materially restricts access to a court?",
+    terms: /arbitrat|dispute resolution|hakem|tahkim|uyuşmazlık|arabulucu|mahkeme/i,
+    criteria: {
+      yes: "The contract requires private binding arbitration or an arbitral forum instead of court access.",
+      no: "The contract routes disputes to courts or a statutory consumer dispute body and does not impose private binding arbitration. A Turkish Tüketici Hakem Heyeti is a statutory consumer body, and arabuluculuk is mediation; neither is private contractual arbitration.",
+      qualified: "Private arbitration applies only to some disputes, is optional, has an opt-out, or coexists ambiguously with court access.",
+      not_addressed: "The contract does not address private binding arbitration or dispute forums.",
+      unclear: "The forum language is contradictory or cannot be distinguished from mediation or a statutory tribunal.",
+    },
     claims: {
-      yes: "The agreement requires or strongly directs disputes to arbitration.",
-      no: "The agreement explicitly preserves ordinary court proceedings instead of mandatory arbitration.",
-      qualified: "The agreement applies arbitration only to some disputes or allows an opt-out.",
+      yes: "The agreement requires or strongly directs disputes to private binding arbitration.",
+      no: "The agreement directs disputes to statutory consumer bodies or courts rather than imposing private mandatory arbitration.",
+      qualified: "The agreement applies private arbitration only in limited or optional circumstances.",
     },
     impact: "high_risk", penalty: 1.5,
   },
@@ -144,8 +153,19 @@ const CLASSIFICATION_CRITERIA = {
   unclear: "The language is contradictory or too ambiguous to classify reliably.",
 };
 
+export function redactPersonalData(input) {
+  let text = String(input || "");
+  text = text
+    .replace(/((?:ALICI|BUYER|CUSTOMER)\s+BİLGİLERİ\s*)[\s\S]*?(?=\n\s*(?:SATICI|SELLER|MERCHANT)\s+BİLGİLERİ)/gi, "$1\n[REDACTED_PERSONAL_DETAILS]\n")
+    .replace(/((?:FATURA|BILLING)\s+BİLGİLERİ\s*)[\s\S]*?(?=\n\s*\d+(?:\.\d+)*\.\s*[A-ZÇĞİÖŞÜ])/gi, "$1\n[REDACTED_PERSONAL_DETAILS]\n")
+    .replace(/(^|\n)(\s*(?:Teslim Edilecek Kişi|Teslimat Adresi|Fatura Adresi|E-posta(?:\/Kullanıcı Adı)?|Kullanıcı Adı|Telefon|Faks|Recipient|Delivery Address|Billing Address|E-?mail|Phone)\s*:\s*)[^\n]*/gim, "$1$2[REDACTED]")
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[REDACTED_EMAIL]")
+    .replace(/(?<!\d)(?:\+?\d[ \t().-]*){10,15}(?!\d)/g, "[REDACTED_PHONE]");
+  return text;
+}
+
 export function normalizeDocument(input) {
-  const clean = String(input || "").replace(/\0/g, "").replace(/\r/g, "\n").trim();
+  const clean = redactPersonalData(input).replace(/\0/g, "").replace(/\r/g, "\n").trim();
   if (clean.length < 200) throw new Error("Agreement text is too short to assess.");
   const blocks = clean.split(/\n{2,}/).flatMap((block) => {
     const compact = block.replace(/\s+/g, " ").trim();
@@ -153,9 +173,12 @@ export function normalizeDocument(input) {
     return compact.match(/.{1,900}(?:[.!?](?=\s|$)|$)/g) || [compact.slice(0, 900)];
   }).filter((block) => block.length >= 20);
   const paragraphs = {};
+  const seen = new Set();
   let total = 0;
   for (const block of blocks) {
+    if (seen.has(block)) continue;
     if (total + block.length > 40_000 || Object.keys(paragraphs).length >= 100) break;
+    seen.add(block);
     const id = `p${Object.keys(paragraphs).length + 1}`;
     paragraphs[id] = block;
     total += block.length;
@@ -187,7 +210,7 @@ export function buildAnalysisRequest(paragraphs) {
     questions[`${name}_value`] = {
       type: "choice",
       instructions: { question: topic.question, rule: "Read all `paragraphs`. Do not treat silence as no." },
-      criteria: CLASSIFICATION_CRITERIA,
+      criteria: topic.criteria || CLASSIFICATION_CRITERIA,
     };
     const candidates = evidenceCandidates(paragraphs, topic);
     if (candidates.length) {
@@ -247,10 +270,10 @@ export async function analyzeAgreement({ text, url = "", title = "Agreement" }, 
     const check = await ask({ state: { items }, model: process.env.SYSTEM_ONE_MODEL || "jev-latest", questions });
     for (const finding of proposed) {
       const answer = parseChoice(check.answers?.[finding.topic], ["supports", "contradicts", "says_nothing"]);
-      if (answer?.choice === "supports" && answer.confidence >= 0.75) {
+      const confidence = Math.min(finding.confidence, answer?.confidence ?? 0);
+      if (answer?.choice === "supports" && confidence >= DISPLAY_CONFIDENCE[finding.impact]) {
         verified.push({
-          ...finding,
-          confidence: Math.min(finding.confidence, answer.confidence),
+          ...finding, confidence,
           evidence: [{ documentHash, documentUrl: url, exactQuote: finding.exactQuote }],
         });
       }
@@ -270,8 +293,12 @@ export async function analyzeAgreement({ text, url = "", title = "Agreement" }, 
 }
 
 export async function classifyConsentCandidate(summary, ask) {
+  const candidate = Object.fromEntries(Object.entries(summary).map(([key, value]) => [
+    key,
+    Array.isArray(value) ? value.map(redactPersonalData) : typeof value === "string" ? redactPersonalData(value) : value,
+  ]));
   const result = await ask({
-    state: { candidate: summary },
+    state: { candidate },
     model: process.env.SYSTEM_ONE_MODEL || "jev-latest",
     questions: {
       consent_event: {

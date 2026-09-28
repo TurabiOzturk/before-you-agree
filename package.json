@@ -1,10 +1,11 @@
 {
   "name": "before-you-agree",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "scripts": {
     "server": "node --env-file-if-exists=.env server/index.js",
-    "test": "node --test"
+    "test": "node --test",
+    "eval": "node --env-file-if-exists=.env scripts/eval.js"
   }
 }

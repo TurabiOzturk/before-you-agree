@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { analyzeAgreement, buildAnalysisRequest, classifyConsentCandidate, normalizeDocument, scoreFindings } from "../server/analyzer.js";
+import { analyzeAgreement, buildAnalysisRequest, classifyConsentCandidate, normalizeDocument, redactPersonalData, scoreFindings } from "../server/analyzer.js";
 
 const document = `Privacy Terms
 
@@ -45,6 +45,24 @@ test("analysis only displays a claim after evidence verification", async () => {
   assert.match(assessment.findings[0].evidence[0].exactQuote, /valuable consideration/);
 });
 
+test("personalized agreement fields are redacted before analysis", async () => {
+  const personalized = `ALICI BİLGİLERİ\nTeslim Edilecek Kişi: Example Person\nTeslimat Adresi: Example Street 5\nTelefon: 0555 111 22 33\nE-posta/Kullanıcı Adı: person@example.test\nSATICI BİLGİLERİ\nSatıcı: Example Shop`;
+  const redacted = redactPersonalData(personalized);
+  assert.doesNotMatch(redacted, /Example Person|Example Street|person@example|0555/);
+  assert.match(redacted, /REDACTED_PERSONAL_DETAILS/);
+
+  await classifyConsentCandidate({ nearbyText: "I agree — person@example.test", interactiveTexts: ["Terms"] }, async (request) => {
+    assert.doesNotMatch(request.state.candidate.nearbyText, /person@example/);
+    return { answers: { consent_event: { type: "choice", choice: "yes", confidence: 0.99 } } };
+  });
+});
+
+test("normalization removes duplicate paragraphs", () => {
+  const repeated = "This agreement provides a fourteen-day refund process and access to consumer courts. ".repeat(3);
+  const paragraphs = normalizeDocument(`${repeated}\n\n${repeated}\n\n${repeated}`);
+  assert.equal(Object.keys(paragraphs).length, 1);
+});
+
 test("unknown-language documents still receive evidence-selection questions", () => {
   const paragraphs = normalizeDocument("利用規約。個人情報を第三者に販売する場合があります。アカウントは設定画面から削除できます。".repeat(8));
   const request = buildAnalysisRequest(paragraphs);
@@ -58,6 +76,31 @@ test("classifier fallback interprets a bounded candidate in its own language", a
     return { answers: { consent_event: { type: "choice", choice: "yes", confidence: 0.97, probabilities: { yes: 0.98, no: 0.01, unsure: 0.01 } } } };
   });
   assert.deepEqual(result, { decision: "yes", confidence: 0.97, probabilities: { yes: 0.98, no: 0.01, unsure: 0.01 } });
+});
+
+test("Turkish statutory consumer forums are distinguished from private arbitration", async () => {
+  const clause = "Uyuşmazlıklarda Tüketici Hakem Heyetleri ile Tüketici Mahkemeleri yetkilidir. Tüketici Mahkemesinde dava açılmadan önce arabulucuya başvurulur. ".repeat(3);
+  const paragraphs = normalizeDocument(clause);
+  const request = buildAnalysisRequest(paragraphs);
+  assert.match(request.questions.arbitration_value.criteria.no, /statutory consumer body/);
+  assert.match(request.questions.arbitration_value.criteria.no, /mediation/);
+
+  async function assess(confidence) {
+    return analyzeAgreement({ text: clause }, async (payload) => {
+      if (payload.state.items) return { answers: { arbitration: { type: "choice", choice: "supports", confidence: 0.99 } } };
+      const answers = Object.fromEntries(Object.keys(payload.questions)
+        .filter((name) => name.endsWith("_value"))
+        .map((name) => [name, { type: "choice", choice: "not_addressed", confidence: 0.95 }]));
+      answers.arbitration_value = { type: "choice", choice: "no", confidence };
+      answers.arbitration_evidence = { type: "choice", choice: "p1", confidence: 0.99 };
+      return { answers };
+    });
+  }
+
+  assert.equal((await assess(0.84)).findings.length, 0);
+  const assessment = await assess(0.9);
+  assert.equal(assessment.findings[0].value, "no");
+  assert.match(assessment.findings[0].plainLanguage, /statutory consumer bodies or courts/);
 });
 
 test("deterministic score is withheld for partial coverage and clamps complete scores", () => {
