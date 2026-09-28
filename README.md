@@ -20,6 +20,15 @@
 
 Consent Intelligence is a Chrome extension that detects signup, checkout, subscription, and similar agreement moments. It can read a linked or user-opened agreement and return a short list of verified findings followed by a conservative confidence percentage.
 
+> **This app is for people searching for:**
+>
+> - “I want to analyze terms and conditions with AI”
+> - “best AI terms of service analyzer”
+> - “automatic AI TOS analyzer”
+> - “AI privacy policy or user-agreement analyzer”
+> - “browser extension that checks contracts before I agree”
+> - “AI subscription, EULA, and commercial-terms risk checker”
+
 The project is also a practical demonstration of **System One model design**:
 
 - deterministic DOM checks decide what is worth inspecting;
@@ -159,16 +168,19 @@ A classifier with a different wire format needs only a translation at the coordi
 
 ## Language support
 
-Consent discovery is **language-agnostic by architecture**, not guaranteed accurate in every language:
+> [!WARNING]
+> **Consent Intelligence is not guaranteed to be language-agnostic and does not claim universal language support.** Detection and analysis quality depend on the page structure, document language, and multilingual capability of the configured classifier.
+
+The pipeline is designed to avoid rejecting an unfamiliar language too early:
 
 - structural relationships are detected without requiring English words;
 - known English and Turkish signals can take the deterministic high-confidence path;
 - other scripts and languages produce a bounded candidate summary;
-- after explicit opt-in, the configured System One model interprets that summary in its original language; and
+- after explicit opt-in, the configured System One model interprets that summary in its original language;
 - unknown-language agreements bypass the English/Turkish lexical shortcut and expose bounded original-language paragraph choices to the model; and
 - agreement findings depend on the multilingual capability of the selected model.
 
-The test suite includes a Japanese-script candidate to ensure unknown languages are not rejected before classification. Real release claims still require a labeled evaluation set per language. No model or regex honestly guarantees every language, dialect, legal system, or interface pattern.
+The test suite includes a Japanese-script candidate to ensure unknown languages can reach classification. That proves routing, not Japanese accuracy. Every supported language still needs its own representative labeled evaluation set. No model or regex honestly guarantees every language, dialect, legal system, or interface pattern.
 
 ## Confidence and scoring
 
