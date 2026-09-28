@@ -261,9 +261,10 @@ export async function analyzeAgreement({ text, url = "", title = "Agreement" }, 
   const coverage = core.every((name) => classifications[name]?.confidence >= 0.7 && ["yes", "no", "qualified"].includes(classifications[name].value)) ? "complete" : "partial";
   const priority = { high_risk: 4, risk: 3, benefit: 2, neutral: 1 };
   const findings = verified.sort((a, b) => priority[b.impact] - priority[a.impact]).slice(0, 8);
+  const confidence = findings.length ? Math.min(...findings.map((finding) => finding.confidence)) : undefined;
   return {
     agreementHashes: [documentHash], source: "model_extracted", title, documentUrl: url,
-    findings, coverage, score: scoreFindings(findings, coverage), scoreVersion: SCORE_VERSION,
+    findings, confidence, coverage, score: scoreFindings(findings, coverage), scoreVersion: SCORE_VERSION,
     extractorVersion: ANALYZER_VERSION, assessedAt: new Date().toISOString(), classifications,
   };
 }

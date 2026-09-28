@@ -12,6 +12,6 @@
 
 ## Workflow
 - `npm test` runs the Node built-in test runner.
-- `npm run server` loads the machine-local `/Users/localroot/.jev.env` when available and binds to `127.0.0.1:8787`.
+- `npm run server` loads the repository-local, git-ignored `.env` when available and binds to `127.0.0.1:8787`.
 - Load this directory through `chrome://extensions` → Developer mode → Load unpacked.
 - Update README when permissions, data flow, setup, or supported document types change.

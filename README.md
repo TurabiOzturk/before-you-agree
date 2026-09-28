@@ -12,12 +12,27 @@ Product source: `/Users/localroot/Documents/Codex/2026-09-28/referenced-chatgpt-
 - Agreements opened in page dialogs, drawers, and modals. The extension observes them; it never synthetic-clicks the site control.
 - Explicit opt-in before agreement text leaves the browser.
 - JEV clause classification, candidate evidence selection, and a second citation-support check.
-- Exact evidence quotes, source links where available, document SHA-256, versioned extraction/scoring, and hash/version cache.
-- Deterministic risk score only when all core topics have explicit, confident coverage. Partial reviews get no score.
+- Concise finding bullets, a conservative confidence percentage, source links where available, document SHA-256, versioned extraction/scoring, and hash/version cache.
+- Evidence text is used internally to verify findings but is not displayed in the card.
+- Deterministic risk score only when all core topics have explicit, confident coverage. Partial reviews get no risk score.
+
+## Configure JEV
+
+Node 24+ and a TypeSafe `JEV_API_KEY` are required for analysis. Get a key from [TypeSafe](https://typesafe.ai/), then explicitly set it before starting the server:
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and replace the placeholder:
+
+```dotenv
+JEV_API_KEY=your_actual_key_here
+```
+
+`.env` is git-ignored and the key stays in the local coordinator; never put it in extension settings or commit it. The server refuses analysis when `JEV_API_KEY` is missing.
 
 ## Run
-
-Requires Node 24+ and a `JEV_API_KEY`. This machine can load the existing protected credential without copying it:
 
 ```bash
 npm test

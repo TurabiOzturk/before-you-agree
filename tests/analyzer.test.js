@@ -40,6 +40,7 @@ test("analysis only displays a claim after evidence verification", async () => {
   assert.equal(assessment.coverage, "partial");
   assert.equal(assessment.score, undefined);
   assert.equal(assessment.findings.length, 1);
+  assert.equal(assessment.confidence, 0.91);
   assert.equal(assessment.findings[0].topic, "data_sale");
   assert.match(assessment.findings[0].evidence[0].exactQuote, /valuable consideration/);
 });

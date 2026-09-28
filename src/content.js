@@ -101,23 +101,23 @@
     card.results.replaceChildren();
     const meta = element("p", assessment.coverage === "complete" ? "Complete review" : "Partial review — unaddressed topics are not treated as safe.", "meta");
     if (typeof assessment.score === "number") meta.prepend(element("strong", `${assessment.score}/10 · `));
-    card.results.append(meta);
     if (!assessment.findings?.length) {
-      card.results.append(element("p", "No evidence-backed findings passed verification. Read the agreement directly."));
+      card.results.append(meta, element("p", "No evidence-backed findings passed verification. Read the agreement directly."));
       return;
     }
+    const list = document.createElement("ul");
     for (const finding of assessment.findings.slice(0, 5)) {
-      const details = document.createElement("details");
-      const summary = document.createElement("summary");
-      summary.textContent = `${finding.impact === "benefit" ? "✓" : "⚠"} ${finding.plainLanguage}`;
-      const quote = element("blockquote", `“${finding.evidence[0].exactQuote}”`);
-      details.append(summary, quote);
-      const url = safeHttpUrl(finding.evidence[0].documentUrl);
-      if (url) {
-        const source = element("a", "Open source document"); source.href = url; source.target = "_blank"; source.rel = "noopener noreferrer";
-        details.append(source);
-      }
-      card.results.append(details);
+      list.append(element("li", `${finding.impact === "benefit" ? "✓" : "⚠"} ${finding.plainLanguage}`));
+    }
+    card.results.append(list);
+    if (typeof assessment.confidence === "number") {
+      card.results.append(element("p", `Confidence: ${Math.round(assessment.confidence * 100)}%`, "confidence"));
+    }
+    card.results.append(meta);
+    const url = safeHttpUrl(assessment.documentUrl);
+    if (url) {
+      const source = element("a", "Open source document"); source.href = url; source.target = "_blank"; source.rel = "noopener noreferrer";
+      card.results.append(source);
     }
   }
 
@@ -150,7 +150,7 @@
     host.style.cssText = "all:initial;position:fixed;z-index:2147483647;right:16px;bottom:16px";
     const shadow = host.attachShadow({ mode: "closed" });
     const style = document.createElement("style");
-    style.textContent = `:host{all:initial}*{box-sizing:border-box}section{font:14px/1.45 system-ui,sans-serif;width:min(390px,calc(100vw - 32px));padding:16px;background:#101b22;color:#f4f7f5;border:1px solid #416058;border-radius:16px;box-shadow:0 14px 48px #0006}header{display:flex;justify-content:space-between;gap:12px;align-items:center}strong{font-size:15px}p{color:#c5d0cc;margin:10px 0}button{font:inherit;color:inherit;background:#285c49;border:1px solid #5d8d79;border-radius:8px;padding:8px 11px;cursor:pointer}header button{background:transparent;border-color:#49685c}button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #83e0bd;outline-offset:2px}.hint,.meta{font-size:12px;color:#aabbb4}.status[data-state=working]{color:#83e0bd}.status[data-state=error]{color:#ffb7a8}.results{max-height:280px;overflow:auto}details{border-top:1px solid #334941;padding:10px 0}summary{cursor:pointer}blockquote{margin:8px 0;padding-left:10px;border-left:2px solid #5d8d79;color:#c5d0cc;font-size:12px}a{color:#83e0bd}`;
+    style.textContent = `:host{all:initial}*{box-sizing:border-box}section{font:14px/1.45 system-ui,sans-serif;width:min(390px,calc(100vw - 32px));padding:16px;background:#101b22;color:#f4f7f5;border:1px solid #416058;border-radius:16px;box-shadow:0 14px 48px #0006}header{display:flex;justify-content:space-between;gap:12px;align-items:center}strong{font-size:15px}p{color:#c5d0cc;margin:10px 0}button{font:inherit;color:inherit;background:#285c49;border:1px solid #5d8d79;border-radius:8px;padding:8px 11px;cursor:pointer}header button{background:transparent;border-color:#49685c}button:focus-visible,a:focus-visible{outline:3px solid #83e0bd;outline-offset:2px}.hint,.meta{font-size:12px;color:#aabbb4}.status[data-state=working]{color:#83e0bd}.status[data-state=error]{color:#ffb7a8}.results{max-height:280px;overflow:auto}.results ul{margin:10px 0;padding-left:20px}.results li{margin:7px 0}.confidence{font-weight:700;color:#f4f7f5}a{color:#83e0bd}`;
     const section = document.createElement("section"); section.setAttribute("role", "region"); section.setAttribute("aria-label", "Consent Intelligence agreement check");
     const header = document.createElement("header");
     const title = element("strong", "Agreement detected");
